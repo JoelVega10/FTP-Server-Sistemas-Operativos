@@ -1,5 +1,6 @@
 #define _XOPEN_SOURCE 600
-#include "prethread-webserver.h"
+#define SO_REUSEPORT 15
+#include "server.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -25,16 +26,11 @@ int thread_amount, current_fork, listenfd, port, threads_available;
 char* root;
 
 //The request of the client will be stored in these variables
-char* method;
-char* uri;
-char* qs;
-char* protocol;
-char* file_content;
+
 
 //Function that contorls the threads
 void recieve_clients(){
     int slot = 0;
-
     start_server();
     // Ignore SIGCHLD to avoid zombie threads
     signal(SIGCHLD,SIG_IGN);
@@ -42,6 +38,7 @@ void recieve_clients(){
 
     // Accept connections
     while (1){
+        printf("Accepting Connections\n");
         threads_id[slot] = 1;
 
         //Tells the next empty thread to wait for a new client
@@ -67,39 +64,29 @@ void recieve_clients(){
 //Start the server (socket)
 void start_server() {
     struct sockaddr_in address;
-    int opt = 1;
 
     // Creating socket file descriptor
-    if ((listenfd = socket(AF_INET, SOCK_STREAM, 0)) == 0)
-    {
-        perror("socket");
-        exit(1);
+    if((listenfd = socket(AF_INET, SOCK_STREAM, 0)) == -1){
+        printf("error creating control socket : Returning Error No:%d\n", errno);
+        return errno;
     }
 
-    // Forcefully attaching socket to the port 8080
-    if (setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT,
-                   &opt, sizeof(opt)))
-    {
-        perror("setsockopt");
-        exit(1);
-    }
     address.sin_family = AF_INET;
-    address.sin_addr.s_addr = INADDR_ANY;
     address.sin_port = htons(port);
+    address.sin_addr.s_addr = inet_addr("127.0.0.1");
+    memset(&(address.sin_zero), 0, 8);
 
-    // Forcefully attaching socket to the port
-    if (bind(listenfd, (struct sockaddr *)&address, sizeof(address))<0)
-    {
-        perror("bind");
-        exit(1);
-    }
-    if (listen(listenfd, 3) < 0)
-    {
-        perror("listen");
-        exit(1);
+    if(bind(listenfd, (struct sockaddr *)&address, sizeof(struct sockaddr)) == -1){
+        printf("Error binding control socket to port %d : Returning error No:%d\n", port, errno);
+        return errno;
     }
 
-    printf("Server online\n");
+    if(listen(listenfd, BACKLOG) == -1){
+        printf("Error listening at control port : Returning Error No:%d\n", errno);
+        return errno;
+    }
+    printf("\nServer started at port:%d\n", port);
+
 }
 
 //Function tha precreate the threads to be used to receive clients
@@ -176,12 +163,12 @@ void attend_client(void* arg){
     pthread_cond_signal(&conditions[thread_amount]);
     pthread_mutex_unlock(&mutex);
 
-    char* buffer = malloc(65535);
-
+    struct PACKET *np = (struct PACKET *)malloc(sizeof(struct PACKET)), *hp;
+    int buffer;
+    buffer = recv(client, np, sizeof(struct PACKET), 0);
     //Receives the message from the client
-    rcvd = recv(client, buffer, 65535, 0);
     // receive error
-    if (rcvd < 0){
+    if (buffer < 0){
         perror("recv");
         threads_id[i] = 0;
         threads_available = threads_available + 1;
@@ -194,7 +181,7 @@ void attend_client(void* arg){
     }
 
     // receive socket closed
-    if (rcvd==0){
+    if (buffer==0){
         perror("Client disconnected upexpectedly");
         threads_id[i] = 0;
         threads_available = threads_available + 1;
@@ -206,10 +193,27 @@ void attend_client(void* arg){
         attend_client((void*) i);
     }
         // message received
-    else{
-        // put ftp methods here
+    hp = ntohp(np);
+    printf("[%d]command #%d\n",client, hp->commid);
+    switch(hp->commid){
+            case GET:
+                client_get(hp, client);
+                break;
+            case PUT:
+                client_put(hp, client);
+                break;
+            case LS:
+                client_ls(hp, client);
+                break;
+            /*case CD:
+                client_cd(hp, client);
+                break;
+                case QUIT:
+                    client_quit(hp, threadinfo);
+                    break;*/
+            default:
+                break;
     }
-
     //Closing SOCKET
     shutdown(client, SHUT_RDWR);
     close(client);
@@ -225,6 +229,115 @@ void attend_client(void* arg){
     }
     printf("Client disconnected from thread %d\n\n",i+1);
     attend_client((void*) i);
+}
+
+//ls Command.................................................................................................
+void client_ls(struct PACKET *hp, int client){
+
+    struct PACKET *np;
+    int sent;
+    //char cwd[DATALEN];
+    DIR *dir;
+    struct dirent *e;
+
+    if((dir = opendir(root)) != NULL){
+        while((e = readdir(dir)) != NULL){
+            strcpy(hp->data, e->d_name);
+            //strcat(hp->data, "\n");
+            hp->flag = OK;
+            hp->len = strlen(hp->data);
+            np = htonp(hp);
+            sent = send(client, np, sizeof(struct PACKET), 0);
+        }
+        hp->flag = DONE;
+        strcpy(hp->data, "");
+        hp->len = strlen(hp->data);
+        np = htonp(hp);
+        sent = send(client, np, sizeof(struct PACKET), 0);
+    }else
+        hp->flag = ERR;
+
+    if(hp->flag == ERR){
+        strcpy(hp->data, "Error processing 'ls' command at server..!!\n\n");
+        hp->len = strlen(hp->data);
+        np = htonp(hp);
+        sent = send(client, np, sizeof(struct PACKET), 0);
+        //exit(1);
+    }
+
+}
+
+
+//get Command..................................................................................................
+void client_get(struct PACKET *hp, int client){
+    struct PACKET *np;
+    int sent, total_sent = 0;
+    size_t read;
+    FILE *in;
+    char path[496];
+    strcpy(path,root);
+    strcat(path, "/");
+    strcat(path,hp->data);
+    printf("File:%s\n", path);
+    in = fopen(path, "rb");
+
+    if(!in){
+
+        hp->flag = ERR;
+        strcpy(hp->data, "Error opening file in server!\n\n");
+        hp->len = strlen(hp->data);
+        np = htonp(hp);
+        sent = send(client, np, sizeof(struct PACKET), 0);
+
+
+        fprintf(stderr, "Error opening file:%s\n\n", hp->data);
+        return;
+    }
+
+
+    sendFile(hp, client, in);
+
+    fclose(in);
+}
+
+//put Command...................................................................................................
+void client_put(struct PACKET *hp, int client){
+    struct PACKET *np = (struct PACKET *)malloc(sizeof(struct PACKET));
+    int bytes, total_recv = 0;
+    //getFileNameFromPath(hp->data);
+    FILE *out;
+    char path[496];
+    strcpy(path,root);
+    strcat(path, "/");
+    strcat(path,hp->data);
+    printf("File:%s\n", path);
+    out = fopen(path, "wb");
+    if(!out){
+
+        hp->flag = ERR;
+        strcpy(hp->data, "Error creating file in server!\n\n");
+        hp->len = strlen(hp->data);
+        np = htonp(hp);
+        bytes = send(client, np, sizeof(struct PACKET), 0);
+
+        fprintf(stderr, "Error creating file:%s\n\n", hp->data);
+        //return;
+    }else{
+
+        hp->flag = READY;
+        //strcpy(hp->data,"");
+        hp->len = strlen(hp->data);
+        np = htonp(hp);
+
+
+        bytes = send(client, np, sizeof(struct PACKET), 0);
+
+        //Once file is created at server
+        recvFile(hp, np,client, out);
+
+    }
+
+    fclose(out);
 }
 
 
