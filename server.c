@@ -162,7 +162,10 @@ void attend_client(void* arg){
     pthread_mutex_lock(&mutex);
     pthread_cond_signal(&conditions[thread_amount]);
     pthread_mutex_unlock(&mutex);
+    manage_client(client,i);
+}
 
+void manage_client(int client,int i){
     struct PACKET *np = (struct PACKET *)malloc(sizeof(struct PACKET)), *hp;
     int buffer;
     buffer = recv(client, np, sizeof(struct PACKET), 0);
@@ -192,29 +195,30 @@ void attend_client(void* arg){
         }
         attend_client((void*) i);
     }
-        // message received
+    // message received
     hp = ntohp(np);
-    printf("[%d]command #%d\n",client, hp->commid);
+    printf("[%d] Command #%d\n",client, hp->commid);
     switch(hp->commid){
-            case GET:
-                client_get(hp, client);
-                break;
-            case PUT:
-                client_put(hp, client);
-                break;
-            case LS:
-                client_ls(hp, client);
-                break;
-            /*case CD:
-                client_cd(hp, client);
-                break;
-                case QUIT:
-                    client_quit(hp, threadinfo);
-                    break;*/
-            default:
-                break;
+        case GET:
+            client_get(hp, client);
+            break;
+        case PUT:
+            client_put(hp, client);
+            break;
+        case LS:
+            client_ls(hp, client);
+            break;
+        case CD:
+            client_cd(hp, client);
+            break;
+        case QUIT:
+            close_socket_client(client,i);
+            break;
     }
-    //Closing SOCKET
+    manage_client(client,i);
+}
+
+void close_socket_client(int client, int i){
     shutdown(client, SHUT_RDWR);
     close(client);
     threads_id[i] = 0;
@@ -266,6 +270,44 @@ void client_ls(struct PACKET *hp, int client){
     }
 
 }
+
+
+//cd Command.........................................................................................
+void client_cd(struct PACKET *hp, int client){
+    struct PACKET *np;
+    int sent;
+    char temp[DATALEN];
+    getcwd(temp, DATALEN);
+    chdir(root);
+    if(chdir(hp->data) < 0){
+        hp->flag = ERR;
+        strcpy(hp->data, "Error changing directory, probably non-existent\n");
+        hp->len = strlen(hp->data);
+        np = htonp(hp);
+        sent = send(client, np, sizeof(struct PACKET), 0);
+    }
+
+    else{
+        getcwd(root, DATALEN);
+        chdir(temp);
+        client_pwd(hp, client);
+    }
+
+}
+
+//pwd Command...............................................................................................
+void client_pwd(struct PACKET *hp, int client){
+
+    int sent;
+    struct PACKET *np;
+
+    strcpy(hp->data, root);
+    hp->flag = OK;
+    hp->len = strlen(hp->data);
+    np = htonp(hp);
+    sent = send(client, np, sizeof(struct PACKET), 0);
+}
+
 
 
 //get Command..................................................................................................
@@ -339,6 +381,8 @@ void client_put(struct PACKET *hp, int client){
 
     fclose(out);
 }
+
+
 
 
 //Function that handles clients when every thread is busy

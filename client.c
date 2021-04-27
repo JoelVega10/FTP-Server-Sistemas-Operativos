@@ -44,24 +44,6 @@ int main(){
 		uComm = getUserCommand(userInput);		//For parsing of user input into struct command
 
 		switch(uComm->id){
-			case CPWD:
-				getCurrentWorkingDir();	//For client side pwd
-				break;
-			case CLS:
-				listContentsDir();		//For client side ls
-				break;
-			case CCD:					//For client side cd
-				if(chdir(uComm->path)< 0){
-					fprintf(stderr, "Error changing directory, probably non-existent..!!\n");
-				}
-				else{
-					printf("Current working client directory is :\n");
-					getCurrentWorkingDir();
-				}
-				break;
-			case PWD:			
-				server_pwd(c_sockfd);		//For server side pwd
-				break;
 			case LS:
 				server_ls(c_sockfd);		//For server side ls
 				break;
@@ -75,50 +57,20 @@ int main(){
 				server_put(uComm, c_sockfd);		//For put operation
 				break;	
 			case QUIT:
-				//client_QUIT(uComm, c_sockfd);
-				goto outsideLoop;
+				client_QUIT(uComm, c_sockfd);
+                close(c_sockfd);		//letting server know that socket is closing
+                printf("\n\nDONE !!\n");
+                fflush(stdout);
+                return 0;
 			default:
 				//fprintf(stderr, "Incorrect command..!!\n");
 				break;
 		}
 	}
-	outsideLoop:			//label for breaking out of loop
 
-	close(c_sockfd);		//letting server know that socket is closing
-	printf("\n\nDONE !!\n");
-
-	fflush(stdout);
 	return 0;
 }
 
-//Client side pwd............................................................................
-void getCurrentWorkingDir(){
-	char dir[DATALEN];
-	if(!getcwd(dir, DATALEN))
-		fprintf(stderr, "Error getting current directory..!!\n");
-	else
-		printf("%s\n", dir);
-}
-
-//Client side ls.............................................................................
-void listContentsDir(){
-	char cwd[DATALEN];
-	DIR *dir;
-	struct dirent *e;
-	if(!getcwd(cwd, DATALEN)){
-		fprintf(stderr, "Error .. !!\n");
-		exit(1);
-	}else{
-		if((dir = opendir(cwd)) != NULL){
-			while((e = readdir(dir)) != NULL){
-				printf("\n%s", e->d_name);
-			}
-		}else
-			fprintf(stderr, "Error opening: %s !!\n", cwd);
-	}
-	printf("\n");
-	fflush(stdout);
-}
 
 //Server side pwd..............................................................................
 void server_pwd(int sfd){
@@ -281,25 +233,7 @@ struct command * getUserCommand(char *input){
 	strcpy(cmd->fileName, "");
 	cmd->id = -2;
 	option = strtok(input, " \t");
-	if(!strcmp(option, "!pwd")){
-		cmd->id = CPWD;
-	}
-
-	else if(!strcmp(option, "!ls")){
-		cmd->id = CLS;
-	}
-
-	else if(!strcmp(option, "!cd")){
-		cmd->id = CCD;
-		option = strtok(NULL, " ");
-		strcpy(cmd->path, option);
-	}
-
-	else if(!strcmp(option, "pwd")){
-		cmd->id = PWD;
-	}
-
-	else if(!strcmp(option, "ls")){
+	if(!strcmp(option, "ls")){
 		cmd->id = LS;
 	}
 
@@ -329,6 +263,7 @@ struct command * getUserCommand(char *input){
 			option = strtok(NULL, "/");
 		}
 		strcpy(cmd->fileName, last);
+
 	}else if(!strcmp(option, "quit")){
 		cmd->id = QUIT;
 
@@ -338,7 +273,7 @@ struct command * getUserCommand(char *input){
 	return cmd;
 }
 
-/*void client_QUIT(struct command *cmd, int sfd){
+void client_QUIT(struct command *cmd, int sfd){
 	struct PACKET *hp = (struct PACKET *)malloc(sizeof(struct PACKET));
 
 	hp->flag = QUIT;
@@ -350,4 +285,4 @@ struct command * getUserCommand(char *input){
 
 	int sent = send(sfd, np, size_packet, 0);
 
-} */
+}
