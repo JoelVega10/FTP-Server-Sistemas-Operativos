@@ -1,8 +1,13 @@
-#include "client.h"
+#include "ftpclient.h"
 
 struct PACKET *np;
+char* host;
+int PORTSERVER;
 
-int main(){
+
+int main(int argc, char* argv[]){
+    host = argv[2];
+    char delimiter[] = ":";
     struct sockaddr_in serv_addr;
     struct command *uComm;
 	int c_sockfd;
@@ -19,9 +24,11 @@ int main(){
         perror("socket");
         exit(EXIT_FAILURE);
     }
-
+    char *ptr = strtok(host,delimiter);
     memset((char*) &serv_addr, 0, sizeof(struct sockaddr_in));
-    serv_addr.sin_addr.s_addr = inet_addr(IPSERVER);
+    serv_addr.sin_addr.s_addr = inet_addr(ptr);
+    ptr = strtok(NULL,delimiter);
+    PORTSERVER = atoi(ptr);
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_port = htons(PORTSERVER);
 
@@ -31,7 +38,7 @@ int main(){
         exit(EXIT_FAILURE);
     }
 
-    printf("Connected with server in address: %d and port: %d\n",IPSERVER,PORTSERVER);
+    printf("Connected with server in address: %s and port: %d\n",host,PORTSERVER);
 
 	printf("FTP Client started : \n");		//User message
 	char userInput[U_INPUTLEN];

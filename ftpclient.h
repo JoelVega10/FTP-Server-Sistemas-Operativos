@@ -1,7 +1,5 @@
 #include "commons.h"
 
-#define IPSERVER "127.0.0.1"  //This value decides the IP to which the client will attempt connection with
-#define PORTSERVER 5555		//Port at which the server is running at above IP. Must be pre-known.
 #define U_INPUTLEN 1024		//User input length
 
 //User command structure
@@ -15,8 +13,6 @@ size_t size_sockaddr = sizeof(struct sockaddr), size_packet = sizeof(struct PACK
 
 struct command * getUserCommand(char *);
 
-void getCurrentWorkingDir();
-void listContentsDir();
 
 void server_pwd(int);
 void server_ls(int);

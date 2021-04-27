@@ -1,5 +1,5 @@
 #define _XOPEN_SOURCE 600
-#include "server.h"
+#include "preforked-FTPserver.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -29,7 +29,6 @@ void recieve_clients(){
     // Ignore SIGCHLD to avoid zombie threads
     signal(SIGCHLD,SIG_IGN);
     precreate_forks();
-    
     //Signals that the children will send to the parent
     //SIGCONT: A new client is connected
     //SIGCHLD: A client exited and the current child is ready to receive more clients

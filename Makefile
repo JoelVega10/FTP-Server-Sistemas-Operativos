@@ -1,22 +1,28 @@
 CC = gcc -w 
 SRCSERVER = .
 SRCCLIENT = .
-BINSERVER = bin/prethread-FTPserver
-BINCLIENT = bin/Client
+BINSERVERFORKED = bin/preforked-FTPserver
+BINSERVERTHREAD = bin/prethread-FTPserver
+BINCLIENT = bin/FTPClient
 OBJCLIENT = obj
 OBJSERVER = obj
-OBJECTSCLIENT = ${OBJCLIENT}/commons.o ${OBJCLIENT}/client.o
-OBJECTSSERVER = ${OBJSERVER}/commons.o ${OBJSERVER}/server.o
-EXECUTABLESERVER = ${BINSERVER}/server.out
-EXECUTABLECLIENT = ${BINCLIENT}/client.out
+OBJECTSCLIENT = ${OBJCLIENT}/commons.o ${OBJCLIENT}/ftpclient.o
+OBJECTSSERVERTHREAD = ${OBJSERVER}/commons.o ${OBJSERVER}/prethread-FTPserver.o
+EXECUTABLESERVERTHREAD = ${BINSERVERTHREAD}/prethread-FTPserver.out
+OBJECTSSERVERFORKED = ${OBJSERVER}/commons.o ${OBJSERVER}/preforked-FTPserver.o
+EXECUTABLESERVERFORKED = ${BINSERVERFORKED}/preforked-FTPserver.out
+EXECUTABLECLIENT = ${BINCLIENT}/ftpclient.out
 
-all:	clean client server
+all:	clean client fork thread
 
 client:	${OBJECTSCLIENT}
 	${CC} $^ -o ${EXECUTABLECLIENT}
 
-server:	${OBJECTSSERVER}
-	${CC} $^ -o ${EXECUTABLESERVER} -pthread 
+thread:	${OBJECTSSERVERTHREAD}
+	${CC} $^ -o ${EXECUTABLESERVERTHREAD} -pthread
+
+fork:	${OBJECTSSERVERFORKED}
+	${CC} $^ -o ${EXECUTABLESERVERFORKED} --std=c11
 
 ${OBJSERVER}/%.o:	${SRCSERVER}/%.c
 	${CC} -c $< -o $@

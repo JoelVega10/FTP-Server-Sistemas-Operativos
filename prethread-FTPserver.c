@@ -1,6 +1,6 @@
 #define _XOPEN_SOURCE 600
 #define SO_REUSEPORT 15
-#include "server.h"
+#include "preforked-FTPserver.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
