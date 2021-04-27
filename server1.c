@@ -1,4 +1,5 @@
 #define _XOPEN_SOURCE 600
+#define SO_REUSEPORT 15
 #include "server.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -12,86 +13,51 @@
 #include <fcntl.h>
 #include <signal.h>
 #include <errno.h>
+#include <pthread.h>
+
+//Global variables that the threads will use
+pthread_t threads;
+pthread_mutex_t mutex;
+pthread_cond_t* conditions;
 
 
-int* forks_id;
-int* forks_id_backup;
-int fork_amount, current_fork, listenfd, port, new_client, fork_free;
+int* threads_id;
+int thread_amount, current_fork, listenfd, port, threads_available;
 char* root;
 
+//The request of the client will be stored in these variables
 
 
-//Function that contorls the processes
+//Function that contorls the threads
 void recieve_clients(){
     int slot = 0;
-    
     start_server();
     // Ignore SIGCHLD to avoid zombie threads
     signal(SIGCHLD,SIG_IGN);
-    precreate_forks();
-    
-    //Signals that the children will send to the parent
-    //SIGCONT: A new client is connected
-    //SIGCHLD: A client exited and the current child is ready to receive more clients
-    signal(SIGCONT, pass);
-    
-    struct sigaction action;
-    action.sa_flags = SA_SIGINFO;
-    action.sa_sigaction = &fork_now_free;
+    precreate_threads();
 
-    if (sigaction(SIGCHLD, &action, NULL) == -1) {
-        perror("sigaction");
-        exit(1); 
-    }
-    
     // Accept connections
     while (1){
         printf("Accepting Connections\n");
-        //Tells the next empty child to wait for a new client
-        kill(forks_id[slot], SIGCONT);
-        forks_id[slot] = 0;
-        new_client = 0;
-        
-        //Waits until a new client is connected to the child
-        while (new_client == 0){
-            pause();
-        }
-        
-        //Get a free child, waits until one of them is free
-        slot = check_forks_available();
-        
-        //When every child is busy
-        if(slot == -1){
-            out_of_forks();
-            slot = check_forks_available();
-        }
-    }
-}
+        threads_id[slot] = 1;
 
-//A new client is connected
-void pass(){
-    signal(SIGCONT, pass);
-    new_client = 1;
-}
+        //Tells the next empty thread to wait for a new client
+        pthread_mutex_lock(&mutex);
+        pthread_cond_signal(&conditions[slot]);
+        pthread_mutex_unlock(&mutex);
 
-//One child is now free
-void fork_now_free(int signo, siginfo_t* info, void* extra){
-    int i = 0;
-    int found = 0;
-    
-    //When the process that sent the signal is not one of the childre, ignore the signal
-    while(found == 0 && i < fork_amount){
-        if(forks_id_backup[i] == info->si_pid){
-            found = 1;
+        //Waits until a new client is connected to the thread
+        pthread_mutex_lock(&mutex);
+        pthread_cond_wait(&conditions[thread_amount], &mutex);
+        pthread_mutex_unlock(&mutex);
+
+        //When every thread is busy, waits until one of them is free
+        if(threads_available == 0){
+            out_of_threads();
         }
-        i = i + 1;
-    }
-    
-    //Set the child as free to recieve a new client
-    if(found == 1){
-        i = info->si_value.sival_int;
-        forks_id[i] = forks_id_backup[i];
-        fork_free = 1;
+
+        //Get a free thread
+        slot = check_threads_available();
     }
 }
 
@@ -123,107 +89,112 @@ void start_server() {
 
 }
 
-//Function tha precreate the processes to be used to receive clients
-void precreate_forks(){
-    forks_id = (int*)malloc(sizeof(int) * fork_amount);
-    forks_id_backup = (int*)malloc(sizeof(int) * fork_amount);
-    
+//Function tha precreate the threads to be used to receive clients
+void precreate_threads(){
+    threads_id = (int*)malloc(sizeof(int) * thread_amount);
+    conditions = (pthread_cond_t*)malloc(sizeof(pthread_cond_t) * (thread_amount+1));
+    threads_available = thread_amount;
+
     int i = 0;
-    int pid;
-    
-    while(i < fork_amount){
-        if ((pid = fork()) < 0){ 
-            perror("fork"); 
-            exit(1); 
-        }
-        
-        //child, waits until the server tells him to receive a client
-        if (pid == 0){ 
-            signal(SIGCONT, attend_client);
-            current_fork = i;
-            pause(); 
-        } 
-  
-        else{
-            forks_id[i] = pid;
-            forks_id_backup[i] = pid;
-        } 
+
+    while(i < thread_amount){
+        pthread_create(&threads, NULL, &attend_client, i);
+        pthread_cond_init (&conditions[i], NULL);
+        threads_id[i] = 0;
         i = i + 1;
     }
+    pthread_cond_init (&conditions[i], NULL);
 }
 
-//Function that checks if there is a child available
+//Function that checks if there is a thread available
 //Returns the position in the array if one is found
-//If there is no child available, -1 is returned
-int check_forks_available(){
+//If there is no thread available, -1 is returned
+int check_threads_available(){
     int answer = -1;
     int i = 0;
-    
-    while(answer == -1 && i < fork_amount){
-        if(forks_id[i] != 0){
+
+    while(answer == -1 && i < thread_amount){
+        if(threads_id[i] == 0){
             answer = i;
         }
         i = i + 1;
     }
-    
+
     return answer;
 }
 
-//Child function, to attend a client
-void attend_client(){
-    signal(SIGCONT, attend_client);
-    
+//Thread function, to attend a client
+void attend_client(void* arg){
+    int i = (int) arg;
+    //Waits for the server to tell this thread to accept clients
+    pthread_mutex_lock(&mutex);
+    pthread_cond_wait(&conditions[i], &mutex);
+    pthread_mutex_unlock(&mutex);
+
+    threads_id[i] = 1;
+
     struct sockaddr_in clientaddr;
     socklen_t addrlen;
     addrlen = sizeof(clientaddr);
-    
-    union sigval value;
-    value.sival_int = current_fork;
-    
+
     int rcvd, fd, bytes_read;
-    char message[100];
     char* ptr;
-    sprintf(message, "%d", current_fork);
-    
+
     //Waits for a client
-    printf("Waiting for client in process %d\n\n",current_fork+1); 
+    printf("Waiting for client in thread %d\n\n",i+1);
     int client = accept(listenfd, (struct sockaddr *) &clientaddr, &addrlen);
     if (client < 0){
-        perror("accept"); 
-        sigqueue(getppid(), SIGCHLD, value);
-        pause();
-        attend_client();
+        perror("accept");
+        threads_id[i] = 0;
+        threads_available = threads_available + 1;
+        pthread_mutex_lock(&mutex);
+        pthread_cond_signal(&conditions[thread_amount]);
+        pthread_mutex_unlock(&mutex);
+        attend_client((void*) i);
     }
-    
+
     //At this point, a client is connected
-    printf("Client connected on process %d\n\n",current_fork+1);
-    
+    threads_available = threads_available - 1;
+
+    printf("Client connected on thread %d\n\n",i+1);
+
     //Tells the server to put another child to receive a client
-    kill(getppid(), SIGCONT);
-    manage_client(client,value);
+    pthread_mutex_lock(&mutex);
+    pthread_cond_signal(&conditions[thread_amount]);
+    pthread_mutex_unlock(&mutex);
+    manage_client(client,i);
 }
 
-void manage_client(int client, union sigval value) {
-    struct PACKET *np = (struct PACKET *) malloc(sizeof(struct PACKET)), *hp;
+void manage_client(int client,int i){
+    struct PACKET *np = (struct PACKET *)malloc(sizeof(struct PACKET)), *hp;
     int buffer;
     buffer = recv(client, np, sizeof(struct PACKET), 0);
     //Receives the message from the client
     // receive error
-    if (buffer < 0) {
+    if (buffer < 0){
         perror("recv");
-        sigqueue(getppid(), SIGCHLD, value);
-        pause();
-        attend_client();
+        threads_id[i] = 0;
+        threads_available = threads_available + 1;
+        if(threads_available == 1){
+            pthread_mutex_lock(&mutex);
+            pthread_cond_signal(&conditions[thread_amount]);
+            pthread_mutex_unlock(&mutex);
+        }
+        attend_client((void*) i);
     }
 
     // receive socket closed
     if (buffer==0){
         perror("Client disconnected upexpectedly");
-        sigqueue(getppid(), SIGCHLD, value);
-        pause();
-        attend_client();
+        threads_id[i] = 0;
+        threads_available = threads_available + 1;
+        if(threads_available == 1){
+            pthread_mutex_lock(&mutex);
+            pthread_cond_signal(&conditions[thread_amount]);
+            pthread_mutex_unlock(&mutex);
+        }
+        attend_client((void*) i);
     }
-
     // message received
     hp = ntohp(np);
     printf("[%d] Command #%d\n",client, hp->commid);
@@ -241,62 +212,27 @@ void manage_client(int client, union sigval value) {
             client_cd(hp, client);
             break;
         case QUIT:
-            close_socket_client(client,value);
+            close_socket_client(client,i);
             break;
     }
-    manage_client(client,value);
+    manage_client(client,i);
 }
 
-
-
-void close_socket_client(int client,union sigval value){
-    //Closing SOCKET
+void close_socket_client(int client, int i){
     shutdown(client, SHUT_RDWR);
     close(client);
-    printf("Client disconnected from process %d\n\n",current_fork+1);
-    sigqueue(getppid(), SIGCHLD, value);
-    pause();
-    attend_client();
-}
+    threads_id[i] = 0;
+    threads_available = threads_available + 1;
 
-//Function that handles clients when every child is busy
-void out_of_forks(){
-    int pid;
-    if ((pid = fork()) < 0){ 
-        perror("fork"); 
-        exit(1); 
+    //When before this poitn, every thread was busy, tells the server
+    //that this thread is ready to receive a client
+    if(threads_available == 1){
+        pthread_mutex_lock(&mutex);
+        pthread_cond_signal(&conditions[thread_amount]);
+        pthread_mutex_unlock(&mutex);
     }
-    
-    //Fork that receives clients, tells them that there is no child available
-    if (pid == 0){ /* child */
-        struct sockaddr_in clientaddr;
-        socklen_t addrlen;
-        addrlen = sizeof(clientaddr);
-        int client;
-        while(1){
-            if (client < 0){
-                perror("accept"); 
-                pause();
-            }
-            send(client, "HTTP/1.0 500 Internal Server Error\r\n", 35, 0);
-            send(client, "<html><body><h1>Server full</h1></body></html>", 46, 0);
-            shutdown(client, SHUT_RDWR);         //All further send and recieve operations are DISABLED...
-            close(client);
-        }
-    }
-    else{
-        //Waits until a child is free
-        printf("All processes are busy\n");
-        
-        fork_free = 0;
-        
-        while (fork_free == 0){
-            pause();
-        }
-        
-        kill(pid, SIGKILL);
-        printf("One process is now free to receive client\n");
-    }
+    printf("Client disconnected from thread %d\n\n",i+1);
+    attend_client((void*) i);
 }
 
 //ls Command.................................................................................................
@@ -446,10 +382,55 @@ void client_put(struct PACKET *hp, int client){
     fclose(out);
 }
 
+
+
+
+//Function that handles clients when every thread is busy
+void out_of_threads(){
+    int pid;
+    if ((pid = fork()) < 0){
+        perror("fork");
+        exit(1);
+    }
+
+    //Fork that receives clients, tells them that there is no thread available
+    if (pid == 0){ /* child */
+        struct sockaddr_in clientaddr;
+        socklen_t addrlen;
+        addrlen = sizeof(clientaddr);
+        int client;
+
+        while(1){
+            client = accept(listenfd, (struct sockaddr *) &clientaddr, &addrlen);
+            if (client < 0){
+                perror("accept");
+            }
+            send(client, "HTTP/1.0 500 Internal Server Error\r\n", 35, 0);
+            send(client, "<html><body><h1>Server full</h1></body></html>", 46, 0);
+            shutdown(client, SHUT_RDWR);         //All further send and recieve operations are DISABLED...
+            close(client);
+        }
+    }
+        //Waits until a thread is free
+    else{
+        printf("All threads are busy\n");
+
+        pthread_mutex_lock(&mutex);
+        pthread_cond_wait(&conditions[thread_amount], &mutex);
+        pthread_mutex_unlock(&mutex);
+
+        kill(pid, SIGKILL);
+
+        printf("One thread is now free to receive client\n");
+    }
+}
+
 int main(int argc, char* argv[]){
-    fork_amount = atoi(argv[2]);
+    pthread_mutex_init(&mutex, NULL);
+    thread_amount = atoi(argv[2]);
     root = argv[4];
     port = atoi(argv[6]);
     recieve_clients();
     return 0;
 }
+

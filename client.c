@@ -112,7 +112,6 @@ void server_ls(int sfd){
 		fprintf(stderr, "Error receiving packet !!\n");
 		return;
 	}
-    printf("Paso 3\n");
 	hp = ntohp(np);
 	while(hp->flag != DONE){
 		printf("%s\n", hp->data);

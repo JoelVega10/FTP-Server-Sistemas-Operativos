@@ -1,20 +1,17 @@
 #include "commons.h"
 #define BACKLOG 20
-
 void recieve_clients();
+
+void pass();
+
+void fork_now_free();
 
 void start_server();
 
-void precreate_threads();
+void precreate_forks();
 
-int check_threads_available();
+int check_forks_available();
 
-void attend_client(void* arg);
+void attend_client();
 
-void out_of_threads();
-
-void client_get(struct PACKET *, int client);
-
-void client_put(struct PACKET *, int client);
-
-void client_ls(struct PACKET *, int client);
+void out_of_forks();
