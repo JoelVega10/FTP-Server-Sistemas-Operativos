@@ -1,0 +1,319 @@
+\documentclass[a4paper,12pt,twoside]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[]{graphicx}
+\usepackage{hyperref}
+%================configuracões da pagina=========================
+
+\setlength{\paperwidth}{21cm}          % Largura da página
+\setlength{\paperheight}{29,7cm}       % Altura da página
+\setlength{\textwidth}{15.5cm}         % Largura do texto
+\setlength{\textheight}{24.6cm}        % Altura do texto
+\setlength{\topmargin}{-1.0cm}         % Margem superior da página = 1 polegada + valor atribuição.
+                                      % \setlenght{\topmargin}{0cm} dá 2.54cm de margem superior.
+\setlength{\oddsidemargin}{0.46cm}   % Margem esquerda = 1 polegada + valor
+\setlength{\evensidemargin}{0.46cm} 
+
+
+
+\begin{document}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%% 			CAPA DO TRABALHO ou Folha de rosto					 	 %%%%%%%%%%%%
+%a. Folha de rosto, contendo os seguintes itens:							
+%• Nome do aluno;
+%• Nome do orientador e coorientador, se houver;
+%• Data de início do Doutorado;
+%• Se for bolsista, nome da agência financiadora e data de início da bolsa;
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\pagestyle{empty}
+
+\begin{figure}
+  \centering
+  \includegraphics[scale=0.5]{logo-tec.png}
+  \vspace*{-0.3cm}
+\end{figure}
+
+\begin{center}
+{\large \rm \textheight {INSTITUTO TECNOLÓGICO DE COSTA RICA} \linebreak}
+{\large \rm \textheight  {INGENIERÍA EN COMPUTACIÓN} \linebreak}
+{\large \rm \textheight  { PRINCIPIOS DE SISTEMAS OPERATIVOS} \linebreak}
+\end{center}
+
+\baselineskip 30pt
+
+\vspace*{1 cm}
+
+\begin{center}
+{\LARGE \bf Documentación : Rust the Future Machine}
+\end{center}
+
+\vspace*{2 cm}
+
+\setcounter{footnote}{1}
+
+\renewcommand{\thefootnote}{\fnsymbol{footnote}}
+\begin{center}
+{\Large \textheight Andres Ramirez Ortega - 2018172107
+\\}
+{\Large \textheight Joel Vega Godínez - 2018163840
+\\}
+\vspace*{0.3cm}
+
+\center{\Large \textheight Profesor:} \vspace*{-.5cm} \center{\Large \textheight Kevin Moraga García}
+\end{center}
+
+\setcounter{footnote}{1}
+
+\vspace*{2 cm}
+
+\baselineskip 17pt
+
+\vspace*{1.5cm}
+\begin{center}
+{{\bf \large Sede Inter-Universitaria Alajuela \par{27 de Abril 2021}}}
+\end{center}
+
+\vspace*{.05cm}
+
+
+\renewcommand{\thefootnote}{\arabic{footnote}}
+
+\setcounter{footnote}{1}
+
+\pagebreak
+
+\baselineskip 19pt
+
+\newpage
+\tableofcontents
+\newpage
+\section{Introducción}
+El intercambio de datos entre los diferentes servidores y computadoras es muy importante. Los beneficios de contar con un servidor FTP son muchos, desde la comodidad y la facilidad hasta los costos de implementación ,la velocidad y la flexibilidad en los diferentes procesos que se realizan. 
+
+Muchas veces, estos servidores se sobre utilizan debido a la gran cantidad de peticiones que se hacen y a la alta demanda. Esto se demuestra en los casos de eventos masivos y ventas de boletos de conciertos y películas muy famosas. Para evitar estos colapsos y caídas de servidores existen técnicas que pueden ayudar a mejorar la calidad y el funcionamiento. El pre-thread consiste la creación con anterioridad de hilos, los cuales atienden las solicitudes. El pre-forked es la creación de bifurcaciones que manejan las diferentes solicitudes, la cual se puede utilizar cuando se tienen bibliotecas que no son seguras para subprocesos, lo cual permite que, los problemas dentro de una solicitud, afecten solamente el proceso en el que se encuentran y no todo el servidor. Estas dos técnicas ayudan a administar los recursos de un servidor y estas son las que serán implementadas en esta tarea. 
+
+\newpage
+\section{Ambiente de desarrollo}
+\subsection{Joel Vega Godínez}
+\subsubsection{C}
+Ubuntu GLIBC 2.31-0ubuntu9.1
+\subsubsection{Navegador}
+Mozilla Firefox 82.0 (64 bits)
+\subsubsection{Sistema Operativo}
+Linux Lite 5.2
+\subsubsection{Especificaciones de Computadora}
+Notebook HP 
+\bigbreak producto: HP Notebook (X6Y01LA#ABM)
+\bigbreak descripción: CPU AMD E2-7110 APU with AMD Radeon R2 Graphics
+\bigbreak descripción: BIOS
+          vendor: Insyde
+          version: F.26
+\bigbreak descripción: System Memory         
+          slot: System board or motherboard
+          size: 4GiB
+\subsubsection{Bash}
+GNU bash, version 5.0.17(1)-release (x86_64-pc-linux-gnu)
+\subsubsection{Editor de texto}
+gedit - Version 3.36.2
+\subsubsection{Gcc}
+gcc (Ubuntu 9.3.0-17ubuntu1~20.04) 9.3.0
+\subsubsection{Rustc}
+rustc 1.51.0 (2fd73fabe 2021-03-23)
+\subsubsection{Herramienta de diagramas}
+\url{http://www.draw.io/}
+
+
+
+\subsection{Andrés Ramírez Ortega}
+\subsubsection{C}
+Ubuntu GLIBC 2.31-0ubuntu9.1
+\subsubsection{Navegador}
+Google Chrome (64 bits)
+\subsubsection{Sistema Operativo}
+Ubuntu(64-bit)
+\subsubsection{Especificaciones de Computadora}
+\bigbreak HP Laptop 15-gw0xxx
+\bigbreak Procesador AMD Ryzen 3 3250U with Radeon Graphics 2.60 GHz
+\bigbreak RAM instalada	12,0 GB (9,94 GB utilizable)
+\bigbreak Tipo de sistema	Sistema operativo de 64 bits, procesador x64
+\subsubsection{Bash}
+GNU bash, version 5.0.17(1)-release (x86_64-pc-linux-gnu)
+\subsubsection{Editor de texto}
+gedit - Version 3.36.2
+\subsubsection{Gcc}
+gcc (Ubuntu 9.3.0-17ubuntu1~20.04) 9.3.0
+\subsubsection{Rustc}
+rustc 1.51.0 (2fd73fabe 2021-03-23)
+\subsubsection{Herramienta de diagramas}
+\url{http://www.draw.io/}
+
+\newpage
+\section{Estructuras de datos usadas y funciones}
+
+\begin{itemize}
+    \item Función CONNECT: Esta función esta presente en ambos clientes, es la
+encargada de conectar al servidor en base al url y el puerto que tomó de
+la entrada de usuario
+    \item Función attend client: Presente en ambos tipos de servidores, se encarga
+de crear un hilo (si es prethread) o un proceso (si es preforked) para
+atender a un client.
+    \item Función cd: El FTPServer implementa el comando cd para buscar en un directorio. 
+    \item Función get: El FTPServer implementa el comando get para obtener un archivo. 
+    \item Función put: El FTPServer implementa el comando put para poner un archivo. 
+    \item Función quit: El FTPServer implementa el comando quit para salir del FTPServer. 
+    \item Función receive clients: Presente en ambos servidores, se encarga de manejar los procesos o hilos (dependiendo si es prethread o preforked) para que
+acepten a los clientes
+    \item STRUCT command: Este struct contiene un id, una dirección y un nombre de archivo, con estos datos se podía comunicar al servidor cual comando esta solicitando y con que datos se va a realizar desde la entrada del usuario. 
+    \item STRUCT packet: Este struct contiene entre sus datos una bandera, el id del comando, el largo de los datos, y los datos. Con esta información tanto el cliente como el servidor, se lograban comunicar datos de entrada y salida.
+    \item  Struct sockaddr\_in: Proveniente de socket.h, este facilitaba la creación de la dirección y el puerto, a donde el socket se va a conectar. 
+\end{itemize}
+
+\newpage
+\section{Instrucciones para ejecutar el programa}
+
+Las instrucciones para ejecutar son las siguientes: 
+
+\begin{itemize}
+    \item Se tiene un makefile, con el cual inicializamos. 
+    \item Luego debemos dirigirnos a la carpeta bin. 
+    \item Luego el cliente debe dirigirse a la carpeta FTPClient.
+    \item Luego se ejecuta ftpclient -h <host-a-conectar> [<lista-de-comandos-a-ejecutar>]
+    \item Para el server prethread se debe dirigir a la carpeta bin y luego a la carpeta prethread-FTPserver.
+    \item Luego se ejecuta prethread-FTPserver -n <cantidad-hilos> -w <ftp-root> -p <port>
+    \item Para el server preforked se debe dirigir a la carpeta bin y luego a la carpeta preforked-FTPserver.
+    \item Luego se ejecuta preforked-FTPserver -n <cantidad-hilos> -w <ftp-root> -p <port>
+\end{itemize}
+
+
+\newpage
+\section{Actividades realizadas por estudiante}
+
+\subsection{Actividades Joel Vega}
+\begin{tabular}{ |p{7cm}||p{3cm}|p{3cm}|  }
+ \hline
+ \multicolumn{3}{|c|}{Lista de Actividades} \\
+ \hline
+ Actividad        & Día   &Cantidad Horas\\
+ \hline
+Reunión inicial Kick-Off   &8/4/2020     &1 hrs\\
+Investigar sobre pre-forked   &10/4/2020     &2 hrs\\
+Desarrollar el Kick-Off   &11/4/2020     &3 hrs\\
+Crear los diagramas UML   &11/4/2020     &3 hrs\\
+Entrega del Kick-Off    &12/4/2020     &1 hrs\\
+ \hline
+ Códificar y probar ambiente   &17/4/2020     &2 hrs\\
+ Programar Clientes   &19/4/2020     &4 hrs\\
+ Investigar sobre los sockets   &21/4/2020     &2 hrs\\
+ Investigar sobre los Hilos   &21/4/2020     &4 hrs\\
+ Reunión para corregir errores    &22/4/2020     &2 hrs\\
+ Documentar el código    &24/4/2020     &2 hrs\\
+ Pruebas sobre el código   &24/4/2020     &2 hrs\\
+ Reunión para la documentación   &26/4/2020     &1 hrs\\
+ Terminar documentación   &27/4/2020     &4 hrs\\
+ Entregar Tarea   &27/4/2020     &1 hrs\\
+ \hline
+\end{tabular}
+
+\subsection{Actividades Andrés Ramírez}
+
+\begin{tabular}{ |p{7cm}||p{3cm}|p{3cm}|  }
+ \hline
+ \multicolumn{3}{|c|}{Lista de Actividades} \\
+ \hline
+ Actividad        & Día   &Cantidad Horas\\
+ \hline
+Reunión inicial Kick-Off   &8/4/2020     &1 hrs\\
+Investigar sobre pre-thread   &9/4/2020     &2 hrs\\
+Investigar sobre otros temas importantes   &10/4/2020     &2 hrs\\
+Desarrollar el Kick-Off   &11/4/2020     &3 hrs\\
+Entrega del Kick-Off    &12/4/2020     &1 hrs\\
+ \hline
+ Códificar y probar ambiente   &17/4/2020     &2 hrs\\
+ Investigar aspectos sobre los lenguajes a utilizar   &15/4/2020     &4 hrs\\
+ Programar Clientes   &19/4/2020     &4 hrs\\
+ Investigar sobre los sockets   &21/4/2020     &2 hrs\\
+ Investigar sobre los Hilos   &21/4/2020     &4 hrs\\
+ Reunión para corregir errores    &22/4/2020     &2 hrs\\
+ Arreglar errores    &25/4/2020     &3 hrs\\
+ Reunión para la documentación   &26/4/2020     &1 hrs\\
+ Terminar documentación   &27/4/2020     &4 hrs\\
+ Entregar Tarea   &27/4/2020     &1 hrs\\
+ \hline
+\end{tabular}
+
+
+\newpage
+\section{Autoevaluación}
+Se logro realizar el prethread y el preforked, pero no se logro la parte del cliente en Rust y el StressCMD, además se tuvieron problemas con la documentación del lenguaje rust ya que se nos hizo muy difícil trabajar en este lenguaje. La función connect no se implementó ya que se conecta automáticamente al servidor, por lo cual no entendimos la función. Los commits se pueden observar en este repositorio:
+\url{https://github.com/JoelVega10/FTP-Server-Sistemas-Operativos}
+
+\subsection{Joel Vega}
+\begin{tabular}{ |p{3cm}||p{3cm} }
+ \hline
+ \multicolumn{2}{|c|}{Autoevaluación} \\
+ \hline
+ Aprendizaje       & Puntaje\\
+ \hline
+Aprendizaje de pthreads   & 4 \\
+ \hline
+Aprendizaje de forks   & 4   \\
+ \hline
+Aprendizaje de comunicacion entre procesos   & 5 \\
+ \hline
+Aprendizaje de sockets   & 5 \\
+
+ \hline
+\end{tabular}
+
+\subsection{Andrés Ramírez}
+
+\begin{tabular}{ |p{3cm}||p{3cm} }
+ \hline
+ \multicolumn{2}{|c|}{Autoevaluación} \\
+ \hline
+ Aprendizaje       & Puntaje\\
+ \hline
+Aprendizaje de pthreads   & 3 \\
+ \hline
+Aprendizaje de forks   & 3   \\
+ \hline
+Aprendizaje de comunicacion entre procesos   & 5 \\
+ \hline
+Aprendizaje de sockets   & 5 \\
+
+ \hline
+\end{tabular}
+
+
+\newpage
+\section{Lecciones Aprendidas}
+\subsection{Joel Vega}
+
+En el presente proyecto me fue posible lograr reforzar los siguientes aspectos:
+\begin{itemize}
+    \item La creación de sockets y su funcionamiento en el lenguaje C.
+    \item El funcionamiento de los comandos del servidor FTP y su interacción con el cliente.
+    \item La librería pthread y como se manejan los hilos con esta, me ayudo a entender como trabajan los hilos.
+    \item La creación de diagramas para un trabajo con este es de suma importancia ya que nos recuerda siempre cual camino seguir.
+    \item El manejo de solicitudes de los clientes hacia el servidor, y la respuesta que da el servidor al estar los espacios disponibles completos.
+\end{itemize}
+
+\subsection{Andrés Ramírez}
+\begin{itemize}
+    \item La función de un web server, los clientes y la importancia de que un web server funcione correctamente. 
+    \item Pensar e investigar antes de codificar, buscar información clara que ayude a entender mejor el problema y sirva como una guía. 
+    \item El uso de hilos queda más claro, mediante la investigación, las lecturas de la clase y la explicación del profesor queda todo más claro. 
+    \item La importancia de las conexiones entre clientes y un servidor. 
+    \item La ventaja de hacer un Kick-Off para no dejar todo hasta el final y tener una idea de los pasos a seguir para el proyecto. 
+\end{itemize}
+
+\newpage
+\begin{thebibliography}{0}
+  \bibitem{Docu} Kevin Moraga.(2021).Documentación Tarea 3
+  \bibitem{wiki} How to Set up FTP Server - Windows FTP| Serv-U. (s. f.). FTP. https://www.serv-u.com/ftp-server-windows/server-setup
+  \bibitem{ge} GeeksforGeeks. (2018, 10 octubre). Multithreading in C. https://www.geeksforgeeks.org/multithreading-c-2/
+  \bibitem{Po}Ippolito, G. (s. f.). Linux Tutorial: POSIX Threads. Posix. https://www.cs.cmu.edu/afs/cs/academic/class/15492-f07/www/pthreads.html
+  \bibitem{unix} UNIX Network Programming: The sockets networking API. (s. f.). Google Books.
+  
+\end{thebibliography}
+\end{document}
