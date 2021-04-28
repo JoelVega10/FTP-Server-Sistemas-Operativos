@@ -1,8 +1,9 @@
 #include "commons.h"
 
-#define U_INPUTLEN 1024		//User input length
+#define U_INPUTLEN 1024		//Largo maximo de input
 
-//User command structure
+//Struct command es un struct que contiene el id de comando, path para si se usa el ls o cd
+// y el filename para el get y put
 struct command{
 	int id;
 	char path[DATALEN];
@@ -11,7 +12,7 @@ struct command{
 
 size_t size_sockaddr = sizeof(struct sockaddr), size_packet = sizeof(struct PACKET);
 
-struct command * getUserCommand(char *);
+struct command * parseInput(char *);
 
 
 void server_pwd(int);
